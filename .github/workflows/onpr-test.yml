@@ -37,16 +37,39 @@ jobs:
           id: init
           run: terraform init
         
-        - name: Run terrascan
-          id: terrascan
-          uses: tenable/terrascan-action@main
-          with:
-            iac_type: 'terraform'
-            iac_version: 'v12'
-            policy_type: 'aws'
-            only_warn: false
-            sarif_upload: true
-        
+        # - name: Run terrascan
+        #   id: terrascan
+        #   uses: tenable/terrascan-action@main
+        #   with:
+        #     iac_type: 'terraform'
+        #     iac_version: 'v13'
+        #     policy_type: 'aws'
+        #     only_warn: false
+        #     sarif_upload: true
+
+        - name: Install Terrascan
+          run: |
+            curl -L https://github.com/tenable/terrascan/releases/latest/download/terrascan_linux_amd64 -o terrascan
+            chmod +x terrascan
+            sudo mv terrascan /usr/local/bin/
+
+        - name: Run Terrascan and Fail on Medium/High
+          run: |
+            terrascan scan -i terraform -t aws -o json > terrascan-result.json
+
+            echo "Terrascan results:"
+            cat terrascan-result.json
+
+            HIGH=$(grep -o '"severity":"HIGH"' terrascan-result.json | wc -l)
+            MEDIUM=$(grep -o '"severity":"MEDIUM"' terrascan-result.json | wc -l)
+
+            if [ "$HIGH" -gt 0 ] || [ "$MEDIUM" -gt 0 ]; then
+            echo "❌ Found $HIGH HIGH and $MEDIUM MEDIUM severity vulnerabilities."
+            exit 1
+            else
+            echo "✅ No MEDIUM or HIGH severity issues found."
+            fi
+
         - name: Terraform plan
           id: plan
           run: terraform plan > plan.txt
