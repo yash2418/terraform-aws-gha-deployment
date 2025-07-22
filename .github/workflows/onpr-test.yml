@@ -3,6 +3,10 @@ name: Run security scans and plan
 on:
     pull_request:
         types: [opened, synchronize]
+        branches: [main]
+
+permissions:
+  pull-requests: write
 
 env:
 # verbosity setting for Terraform logs
@@ -41,6 +45,7 @@ jobs:
             iac_version: 'v12'
             policy_type: 'aws'
             only_warn: false
+            sarif_upload: true
         
         - name: Terraform plan
           id: plan
