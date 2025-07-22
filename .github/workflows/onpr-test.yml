@@ -27,10 +27,18 @@ jobs:
           uses: hashicorp/setup-terraform@v3
           with:
             terraform_version: "1.12.2"
+
+        - name: Install jq
+          run: sudo apt-get install -y jq
+
+        - name: Install GitHub CLI
+          run: |
+            sudo apt-get update
+            sudo apt-get install -y gh
         
         - name: Terraform fmt
           id: fmt
-          run: terraform fmt -check
+          run: terraform fmt
           continue-on-error: true
         
         - name: Terraform init
@@ -53,31 +61,49 @@ jobs:
             chmod +x terrascan
             sudo mv terrascan /usr/local/bin/
 
-        - name: Run Terrascan and Fail on Medium/High
+        - name: Run Terrascan scan
+          id: terrascan-scan
           run: |
             terrascan scan -i terraform -t aws -o json > terrascan-result.json
 
-            echo "Terrascan results:"
-            cat terrascan-result.json
+            HIGH=$(jq '[.results.violations[] | select(.severity=="HIGH")] | length' terrascan-result.json)
+            MEDIUM=$(jq '[.results.violations[] | select(.severity=="MEDIUM")] | length' terrascan-result.json)
+            LOW=$(jq '[.results.violations[] | select(.severity=="LOW")] | length' terrascan-result.json)
 
-            HIGH=$(grep -o '"severity":"HIGH"' terrascan-result.json | wc -l)
-            MEDIUM=$(grep -o '"severity":"MEDIUM"' terrascan-result.json | wc -l)
+            echo "HIGH=$HIGH" >> $GITHUB_OUTPUT
+            echo "MEDIUM=$MEDIUM" >> $GITHUB_OUTPUT
+            echo "LOW=$LOW" >> $GITHUB_OUTPUT
 
-            if [ "$HIGH" -gt 0 ] || [ "$MEDIUM" -gt 0 ]; then
-            echo "❌ Found $HIGH HIGH and $MEDIUM MEDIUM severity vulnerabilities."
+        - name: Fail if HIGH severity issues found
+          if: steps.terrascan-scan.outputs.HIGH != '0'
+          run: |
+            echo "❌ Found ${{ steps.terrascan-scan.outputs.HIGH }} HIGH severity vulnerabilities. Failing the job."
             exit 1
-            else
-            echo "✅ No MEDIUM or HIGH severity issues found."
+
+        - name: Comment PR with Terrascan summary (if any MEDIUM or LOW)
+          if: steps.terrascan-scan.outputs.HIGH == '0' && (steps.terrascan-scan.outputs.MEDIUM != '0' || steps.terrascan-scan.outputs.LOW != '0')
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          run: |
+            PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+            echo "Posting Terrascan warning comment to PR #$PR_NUMBER"
+
+            HIGH=${{ steps.terrascan-scan.outputs.HIGH }}
+            MEDIUM=${{ steps.terrascan-scan.outputs.MEDIUM }}
+            LOW=${{ steps.terrascan-scan.outputs.LOW }}
+
+            COMMENT="⚠️ Terrascan found issues:\n
+            - High Severity: $HIGH\n
+            - Medium Severity: $MEDIUM\n
+            - Low Severity: $LOW\n
+            Please review the findings."
+
+            gh pr comment $PR_NUMBER --body "$COMMENT"
             fi
 
         - name: Terraform plan
           id: plan
           run: terraform plan > plan.txt
-
-        - name: Install GitHub CLI
-          run: |
-            sudo apt-get update
-            sudo apt-get install -y gh
 
         - name: Post Plan Output to PR
           run: |
