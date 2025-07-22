@@ -45,62 +45,14 @@ jobs:
           id: init
           run: terraform init
         
-        # - name: Run terrascan
-        #   id: terrascan
-        #   uses: tenable/terrascan-action@main
-        #   with:
-        #     iac_type: 'terraform'
-        #     iac_version: 'v13'
-        #     policy_type: 'aws'
-        #     only_warn: false
-        #     sarif_upload: true
-
-        - name: Install Terrascan
-          run: |
-           curl -L https://github.com/tenable/terrascan/releases/download/v1.18.6/terrascan_linux_amd64 -o terrascan
-           chmod +x terrascan
-           sudo mv terrascan /usr/local/bin/
-           terrascan version
-
-        - name: Run Terrascan scan
-          id: terrascan-scan
-          run: |
-            terrascan scan -i terraform -t aws -o json > terrascan-result.json
-
-            HIGH=$(jq '[.results.violations[] | select(.severity=="HIGH")] | length' terrascan-result.json)
-            MEDIUM=$(jq '[.results.violations[] | select(.severity=="MEDIUM")] | length' terrascan-result.json)
-            LOW=$(jq '[.results.violations[] | select(.severity=="LOW")] | length' terrascan-result.json)
-
-            echo "HIGH=$HIGH" >> $GITHUB_OUTPUT
-            echo "MEDIUM=$MEDIUM" >> $GITHUB_OUTPUT
-            echo "LOW=$LOW" >> $GITHUB_OUTPUT
-
-        - name: Fail if HIGH severity issues found
-          if: steps.terrascan-scan.outputs.HIGH != '0'
-          run: |
-            echo "❌ Found ${{ steps.terrascan-scan.outputs.HIGH }} HIGH severity vulnerabilities. Failing the job."
-            exit 1
-
-        - name: Comment PR with Terrascan summary (if any MEDIUM or LOW)
-          if: steps.terrascan-scan.outputs.HIGH == '0' && (steps.terrascan-scan.outputs.MEDIUM != '0' || steps.terrascan-scan.outputs.LOW != '0')
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          run: |
-            PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
-            echo "Posting Terrascan warning comment to PR #$PR_NUMBER"
-
-            HIGH=${{ steps.terrascan-scan.outputs.HIGH }}
-            MEDIUM=${{ steps.terrascan-scan.outputs.MEDIUM }}
-            LOW=${{ steps.terrascan-scan.outputs.LOW }}
-
-            COMMENT="⚠️ Terrascan found issues:\n
-            - High Severity: $HIGH\n
-            - Medium Severity: $MEDIUM\n
-            - Low Severity: $LOW\n
-            Please review the findings."
-
-            gh pr comment $PR_NUMBER --body "$COMMENT"
-            fi
+        - name: Run Checkov action
+          id: checkov
+          uses: bridgecrewio/checkov-action@master
+          with:
+            soft_fail: false
+            framework: terraform
+            output_format: sarif
+            output_file_path: reports/results.sarif
 
         - name: Terraform plan
           id: plan
