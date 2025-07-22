@@ -1,0 +1,56 @@
+name: Run security scans and plan
+
+on:
+    pull_request:
+        types: [opened, synchronize]
+
+env:
+# verbosity setting for Terraform logs
+ TF_LOG: INFO
+ # Credentials for deployment to AWS
+ AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+ AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+jobs:
+    run-scans:
+        runs-on: ubuntu-latest
+
+        steps:
+        - name: Checkout repository
+          uses: actions/checkout@v3
+        
+        - name: Install terraform
+          uses: hashicorp/setup-terraform@v3
+          with:
+            terraform_version: "1.12.2"
+        
+        - name: Terraform fmt
+          id: fmt
+          run: terraform fmt -check
+          continue-on-error: true
+        
+        - name: Terraform init
+          id: init
+          run: terraform init
+        
+        - name: Run terrascan
+          id: terrascan
+          uses: tenable/terrascan-action@main
+          with:
+            iac_type: 'terraform'
+            iac_version: 'v12'
+            policy_type: 'aws'
+            only_warn: false
+        
+        - name: Terraform plan
+          id: plan
+          run: terraform plan > plan.txt
+
+        - name: Install GitHub CLI
+          uses: cli/cli-action@v2
+
+        - name: Post Plan Output to PR
+          run: |
+            gh pr comment ${{ github.event.pull_request.number }} --body-file plan.txt
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
