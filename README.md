@@ -51,4 +51,3 @@ Contributions are welcome! Please open issues or submit pull requests for improv
 
 
 https://raw.githubusercontent.com/bridgecrewio/checkov/refs/heads/main/docs/5.Policy%20Index/all.md
-
