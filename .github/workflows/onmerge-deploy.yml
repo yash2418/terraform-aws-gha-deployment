@@ -38,7 +38,7 @@ jobs:
         run: terraform apply -auto-approve
 
       - name: Run Release Please
-        uses: google-github-actions/release-please-action@v4
+        uses: googleapis/release-please-action@v4
         with:
           release-type: terraform       # Use "terraform" for Terraform modules
           token: ${{ secrets.GITHUB_TOKEN }}
