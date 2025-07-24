@@ -48,3 +48,6 @@ Integrate with GitHub Actions by using the provided workflow templates in `.gith
 ## Contributing
 
 Contributions are welcome! Please open issues or submit pull requests for improvements.
+
+
+https://raw.githubusercontent.com/bridgecrewio/checkov/refs/heads/main/docs/5.Policy%20Index/all.md
