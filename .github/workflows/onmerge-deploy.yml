@@ -40,6 +40,5 @@ jobs:
       - name: Run Release Please
         uses: googleapis/release-please-action@v4
         with:
-          release-type: generic       # Use "terraform" for Terraform modules
           token: ${{ secrets.GITHUB_TOKEN }}
     
