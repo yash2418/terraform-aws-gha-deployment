@@ -40,8 +40,15 @@ jobs:
         id: apply
         run: terraform apply -auto-approve
 
-      - name: Run Release Please
-        uses: googleapis/release-please-action@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-    
+          node-version: '18'
+
+      - name: Install semantic-release
+        run: npm install semantic-release @semantic-release/github @semantic-release/changelog @semantic-release/git
+
+      - name: Run semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: npx semantic-release    
