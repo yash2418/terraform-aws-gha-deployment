@@ -46,9 +46,9 @@ jobs:
           node-version: '18'
 
       - name: Install semantic-release
-        run: npm install semantic-release @semantic-release/github @semantic-release/changelog @semantic-release/git
+        run: npm install semantic-release @semantic-release/github @semantic-release/commit-analyzer @semantic-release/release-notes-generator
 
       - name: Run semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-        run: npx semantic-release    
+        run: npx semantic-release 
