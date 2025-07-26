@@ -42,6 +42,10 @@ jobs:
         - name: Terraform init
           id: init
           run: terraform init
+
+        - name: Terraform validate
+          id: validate
+          run: terraform validate
         
         - name: Run Checkov action
           id: checkov
